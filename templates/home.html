@@ -1,0 +1,157 @@
+{% load static %}
+<html>
+<head>
+    <meta name="viewport" content="initial-scale=1.0, width=device-width" />
+    <meta name="viewport" content="initial-scale=1.0,
+                width=device-width" />
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"
+        type="text/javascript" charset="utf-8"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"
+        type="text/javascript" charset="utf-8"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"
+        type="text/javascript" charset="utf-8"></script>
+    <link rel="stylesheet" type="text/css"
+        href="https://js.api.here.com/v3/3.1/mapsjs-ui.css" />
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
+
+    <link rel="stylesheet" type="text/css" href = "{% static 'loader.css' %}">
+</head>
+<style>
+  body {
+        background: #ececec;
+    }
+    /*Hidden class for adding and removing*/
+    .lds-dual-ring.hidden {
+        display: none;
+    }
+
+    /*Add an overlay to the entire page blocking any further presses to buttons or other elements.*/
+    .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        background: rgba(0,0,0,.8);
+        z-index: 999;
+        opacity: 1;
+        transition: all 0.5s;
+    }
+    
+    /*Spinner Styles*/
+    .lds-dual-ring {
+        display: inline-block;
+        width: 80px;
+        height: 80px;
+    }
+    .lds-dual-ring:after {
+        content: " ";
+        display: block;
+        width: 64px;
+        height: 64px;
+        margin: 5% auto;
+        border-radius: 50%;
+        border: 6px solid #fff;
+        border-color: #fff transparent #fff transparent;
+        animation: lds-dual-ring 1.2s linear infinite;
+    }
+    @keyframes lds-dual-ring {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+<body>
+<h1>This is the home Page of My Safety App</h1>
+<button onclick="onClickGetMyLocation()">Click me</button>
+<p id="nearby-location"></p>
+<div id="loader" class="lds-dual-ring hidden overlay"></div>
+<div id="googleMap" style="width:100%;height:600px;"></div>
+<div id ="lat-long"></div>
+<script>
+let myCurrentLatitude = 0
+let myCurrentLongitude =  0
+var map
+function initMap() {
+  const myLatLng = { lat: myCurrentLatitude, lng: myCurrentLongitude};
+  map = new google.maps.Map(document.getElementById("googleMap"), {
+    zoom: 13,
+    center: myLatLng,
+  });
+
+  new google.maps.Marker({
+    position: myLatLng,
+    map,
+    title: "Hello World!",
+  });
+}
+    var x = document.getElementById("my-current-location");
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+    }
+    function onClickGetMyLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(sendPosition);            
+        } else {
+            x.innerHTML = "Geolocation is not supported by this browser.";
+         }
+    }
+    function sendPosition(position) {
+        var csrftoken =  getCookie('csrftoken')
+        myCurrentLatitude = position.coords.latitude
+        myCurrentLongitude = position.coords.longitude
+        initMap()
+        $.ajax({
+            beforeSend: function() {
+                $("#loader").removeClass("hidden")
+            },
+            url: 'http://127.0.0.1:8000/getSafety/',
+            type: 'GET',
+            headers: {'X-CSRFToken': csrftoken},
+            data: {
+            'latitude': position.coords.latitude,
+            'longitude': position.coords.longitude
+            },
+            dataType: 'json',
+            success: function(data) {
+                console.log(data);
+                $("#nearby-location").html("got the results")
+                responseJson = JSON.parse(JSON.stringify(data))
+                for(id in responseJson){
+                    console.log(id)
+                    new google.maps.Marker({
+                    position: new google.maps.LatLng(responseJson[id].latitude, responseJson[id].longitude),
+                    map: map
+                    });
+                   
+                }
+            },
+            complete: function() {
+                $("#loader").addClass("hidden")
+                
+            }
+        });
+    }
+    
+    
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=&callback=initMap&v=weekly" async></script>
+
+</body>
+</html>
