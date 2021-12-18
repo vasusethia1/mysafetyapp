@@ -132,14 +132,35 @@ function initMap() {
             success: function(data) {
                 console.log(data);
                 $("#nearby-location").html("got the results")
+                var marker
+                var content = ""
                 responseJson = JSON.parse(JSON.stringify(data))
                 for(id in responseJson){
                     console.log(id)
-                    new google.maps.Marker({
+                    marker = new google.maps.Marker({
                     position: new google.maps.LatLng(responseJson[id].latitude, responseJson[id].longitude),
                     map: map
                     });
-                   
+                    map.setCenter(marker.getPosition())
+                    namePlace = "<p> Name: " + responseJson[id].name + "</p>"
+                    overallCrime = "<p> Overall: " + responseJson[id].overallCrime + "</p>"
+                    womenCrimeRate = "<p> Women: " + responseJson[id].womenSafety + "</p>"
+                    lgbtqCrime = "<p> Lgbtq: " + responseJson[id].lgbtq + "</p>"
+                    medicalSafe = "<p> Medical: " + responseJson[id].medical + "</p>"
+                    physicalHarmRatings = "<p> Physical Harm: " + responseJson[id].physicalHarm + "</p>"
+                    theftCrime =  "<p> Theft: " + responseJson[id].theftCrime  + "</p>"
+                    politicalFreedomRatings = "<p> Political Freedom: " + responseJson[id].politicalFreedom + "</p>"
+
+                    content = namePlace + overallCrime + womenCrimeRate + lgbtqCrime + medicalSafe + physicalHarmRatings + theftCrime + politicalFreedomRatings
+                    var infowindow = new google.maps.InfoWindow()
+                    
+                    google.maps.event.addListener(marker,'click', (function(marker,content,infowindow){ 
+                        return function() {
+                            infowindow.setContent(content);
+                            infowindow.open(map,marker);
+                        };
+                    })(marker,content,infowindow)); 
+
                 }
             },
             complete: function() {
