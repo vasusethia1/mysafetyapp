@@ -6,7 +6,14 @@ import json
 from django.shortcuts import render
 import math
 from . import ParseJson
-# Create your views here.
+from django.core.cache import cache
+import googlemaps
+import hashlib
+# Create your views here
+def returnGmapsClient():
+    gmapsKey = googlemaps.Client(key="")
+    return gmapsKey
+
 def covertLatLongToSWNE(latitude,longitude):
     maxLatitude, maxLongitude =  kmInDegree(latitude, longitude)
     north = latitude + maxLatitude
@@ -14,6 +21,26 @@ def covertLatLongToSWNE(latitude,longitude):
     east = longitude + maxLongitude
     west = longitude - maxLongitude
     return [north, west, south, east]
+
+def setGetCache(cacheKey):
+    amadeus = Client(
+        client_id="",
+        client_secret="",
+        log_level='debug'
+    )
+    cacheTime = 86000
+    cachedReq = cache.get(cacheKey)
+    if not cachedReq:
+        print("Request not found in the cache")
+        responseUsingLatitude = amadeus.safety.safety_rated_locations.get(latitude= 41.39848388029149, longitude=2.160873)
+        if responseUsingLatitude == None:
+            return HttpResponse(json.dumps({"error": "Unable to find"}))
+        else:
+            print(responseUsingLatitude.data)
+            cache.set(cacheKey, responseUsingLatitude.data, cacheTime)
+            return HttpResponse(ParseJson.returnWomenCrime(responseUsingLatitude.data))
+    return HttpResponse(ParseJson.returnWomenCrime(cachedReq))
+    
 
 def kmInDegree(lat, long):
     pi = math.pi
@@ -32,32 +59,17 @@ def kmInDegree(lat, long):
     return latitude, longitude
 
 def getSafetyRatedLocations(request):
-    amadeus = Client(
-        client_id="",
-        client_secret="",
-        log_level='debug'
+    gmapsKey = returnGmapsClient()
 
-    )
     latitude = float(request.GET.get('latitude'))
     longitude = float(request.GET.get('longitude'))
     northWestSouthEast = covertLatLongToSWNE(latitude, longitude)
     print("My coordinates ")
     print(northWestSouthEast)
     try:
-        response =  amadeus.safety.safety_rated_locations.by_square.get(
-            north=northWestSouthEast[0],
-            west=northWestSouthEast[1],
-            south=northWestSouthEast[2],
-            east=northWestSouthEast[3]
-        )
-        if response.data == None:
-            responseUsingLatitude = amadeus.safety.safety_rated_locations.get(latitude=41.397158, longitude=2.160873)
-            if responseUsingLatitude == None:
-                return HttpResponse(json.dumps({"error": "Unable to find"}))
-            else:
-                print(responseUsingLatitude.data)
-                return HttpResponse(ParseJson.returnWomenCrime(responseUsingLatitude.data))
-        else:
-            return HttpResponse(ParseJson.returnWomenCrime(responseUsingLatitude.data))
+        latitude6f = str(41.39848388029149).encode('utf-8')
+        longitude6f = str(2.160873).encode('utf-8')
+        cacheKey = hashlib.sha256(latitude6f[0:8] + longitude6f[0:8]).hexdigest()
+        return setGetCache(cacheKey)
     except ResponseError as error:
         raise error
