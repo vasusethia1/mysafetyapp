@@ -7,12 +7,8 @@ from django.shortcuts import render
 import math
 from . import ParseJson
 from django.core.cache import cache
-import googlemaps
-import hashlib
-# Create your views here
-def returnGmapsClient():
-    gmapsKey = googlemaps.Client(key="")
-    return gmapsKey
+from . import utils
+
 
 def covertLatLongToSWNE(latitude,longitude):
     maxLatitude, maxLongitude =  kmInDegree(latitude, longitude)
@@ -22,24 +18,29 @@ def covertLatLongToSWNE(latitude,longitude):
     west = longitude - maxLongitude
     return [north, west, south, east]
 
-def setGetCache(cacheKey):
+def setGetCache(cacheKey, latitude, longitude, radius_1):
     amadeus = Client(
         client_id="",
         client_secret="",
-        log_level='debug'
     )
     cacheTime = 86000
     cachedReq = cache.get(cacheKey)
     if not cachedReq:
         print("Request not found in the cache")
-        responseUsingLatitude = amadeus.safety.safety_rated_locations.get(latitude= 41.39848388029149, longitude=2.160873)
-        if responseUsingLatitude == None:
+        responseUsingLatitude = amadeus.safety.safety_rated_locations.get(latitude= latitude, longitude= longitude, radius = radius_1)
+        if  isinstance(responseUsingLatitude.data, type(None)):
+            print("Hello World")
             return HttpResponse(json.dumps({"error": "Unable to find"}))
         else:
             print(responseUsingLatitude.data)
             cache.set(cacheKey, responseUsingLatitude.data, cacheTime)
-            return HttpResponse(ParseJson.returnWomenCrime(responseUsingLatitude.data))
-    return HttpResponse(ParseJson.returnWomenCrime(cachedReq))
+            return HttpResponse(ParseJson.returnJsonMapOfCrimes(responseUsingLatitude.data))
+    else:
+        if(type(cachedReq) == type(None)):
+            return HttpResponse(json.dumps({"error": "Unable to find"}))
+        else:
+            print("Found a cache hit")
+            return HttpResponse(ParseJson.returnJsonMapOfCrimes(cachedReq))
     
 
 def kmInDegree(lat, long):
@@ -59,17 +60,30 @@ def kmInDegree(lat, long):
     return latitude, longitude
 
 def getSafetyRatedLocations(request):
-    gmapsKey = returnGmapsClient()
+    gmapsHandler = utils.returnGmapsClient()
 
     latitude = float(request.GET.get('latitude'))
     longitude = float(request.GET.get('longitude'))
-    northWestSouthEast = covertLatLongToSWNE(latitude, longitude)
-    print("My coordinates ")
-    print(northWestSouthEast)
+    radius =  float(request.GET.get('radius'))
     try:
-        latitude6f = str(41.39848388029149).encode('utf-8')
-        longitude6f = str(2.160873).encode('utf-8')
-        cacheKey = hashlib.sha256(latitude6f[0:8] + longitude6f[0:8]).hexdigest()
-        return setGetCache(cacheKey)
+        cacheKey = utils.getCacheKey(latitude, longitude, radius)
+        return setGetCache(cacheKey, latitude, longitude, radius)
     except ResponseError as error:
         raise error
+def getSafetyLocationFromGivenAddress(request):
+    gmapsHandler = utils.returnGmapsClient()
+    address = str(request.GET.get('address'))
+    radius =  int(request.GET.get('radius'))
+    print("address input is: " + address)
+    print(radius)
+    try:
+        geoCodeResult=gmapsHandler.geocode(address)
+        print(geoCodeResult)
+        latitude = geoCodeResult[0]["geometry"]["location"]["lat"]
+        longitude = geoCodeResult[0]["geometry"]["location"]["lng"]
+        cacheKey = utils.getCacheKey(latitude, longitude, radius)
+        return setGetCache(cacheKey, latitude, longitude, radius)
+    except ResponseError as error:
+        raise error
+        
+        

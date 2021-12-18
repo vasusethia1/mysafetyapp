@@ -44,3 +44,13 @@ body {
         transform: rotate(360deg);
     }
 }
+.locate-me {
+    top: 10%;
+    left: 10%
+}
+.form-container {
+    margin-top: 20px;
+}
+.results {
+    margin-top: 20px;
+}

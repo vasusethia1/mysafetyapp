@@ -4,5 +4,6 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    path('getSafety/', views.getSafetyRatedLocations, name="getSafetyRatedLocations")
+    path('getSafety/', views.getSafetyRatedLocations, name="getSafetyRatedLocations"),
+    path('getSafetyFromAddress/', views.getSafetyLocationFromGivenAddress, name="getSafetyRatedLocationsFromAddress")
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

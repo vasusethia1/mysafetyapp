@@ -1,5 +1,5 @@
 import json
-def returnWomenCrime(jsonResponse):
+def returnJsonMapOfCrimes(jsonResponse):
     data = jsonResponse
     dictOfLatLong = {}
     for i in range(0,len(data)):
