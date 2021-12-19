@@ -1,0 +1,186 @@
+{% load static %}
+<html>
+<head>
+    <meta name="viewport" content="initial-scale=1.0, width=device-width" />
+    <meta name="viewport" content="initial-scale=1.0,
+                width=device-width" />
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"
+        type="text/javascript" charset="utf-8"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"
+        type="text/javascript" charset="utf-8"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"
+        type="text/javascript" charset="utf-8"></script>
+    <link rel="stylesheet" type="text/css"
+        href="https://js.api.here.com/v3/3.1/mapsjs-ui.css" />
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
+    <link rel="stylesheet" type="text/css" href = "{% static 'loader.css' %}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="#">MySafetyApp</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+          <div class="navbar-nav">
+            <a class="nav-item nav-link active" href= "{% url 'home' %}">Home</a>
+            <a class="nav-item nav-link" href="{% url 'check-travel-restriction' %}">Check Travel Restrictions<span class="sr-only">(current)</span></a>
+          </div>
+        </div>
+      </nav>
+    <div class=container style="margin-top: 25px;">
+        <div class="row">
+            <div class="col-md-6">
+                <form>
+                    <div class="form-group">
+                      <label for="exampleInputEmail1">From Source</label>
+                      <input type="text" class="form-control" id="from" aria-describedby="emailHelp" placeholder="From Where?">
+                      <label style="padding-top: 5px;">Destination</label>
+                      <input type="text"  class="form-control" id="to" placeholder="Enter Destination Location">
+                      <small id="emailHelp" class="form-text text-muted">We'll never share your location with anyone else.</small>
+                    </div>
+
+
+                  </form>
+                  <button type="submit" class="btn btn-primary" onclick="onClickCheckRestrictions()">Check Now</button>
+                  <div id="results" style="margin-top: 20px;color: black">
+                    
+                  </div>
+                  <div id="diseaseRiskLevel" style="margin-top: 20px;color: black">
+                    
+                  </div>
+                  <div id="hotspots" style="margin-top: 20px;color: black">
+                    
+                </div>
+                <div id="cases" style="margin-top: 20px;color: black">
+                    
+                </div>
+                
+                 
+
+
+            </div>
+            <div class="col-md-6">
+                <div id="googleMap" style="width:100%;height:600px;position: relative;"></div>
+
+            </div>
+
+        </div>
+        
+        <div id="loader" class="lds-dual-ring hidden overlay"></div>
+
+       
+    </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+<script>
+let myCurrentLatitude = 0
+let myCurrentLongitude =  0
+var map
+function initMap() {
+  const myLatLng = { lat: myCurrentLatitude, lng: myCurrentLongitude};
+  map = new google.maps.Map(document.getElementById("googleMap"), {
+    zoom: 13,
+    center: myLatLng,
+  });
+
+  new google.maps.Marker({
+    position: myLatLng,
+    map,
+    title: "Hello World!",
+  });
+}
+    var x = document.getElementById("my-current-location");
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+    }
+  
+ 
+        var globalResponse = ""
+        function onClickCheckRestrictions(){
+                $.ajax({
+                    beforeSend: function() {
+                        $("#loader").removeClass("hidden")
+                    },
+                    url: 'http://127.0.0.1:8000/getTravelRestictions/',
+                    type: 'GET',
+                    data: {
+                    'from': $("#from").val(),
+                    'to': $("#to").val()
+                    },
+                    dataType: 'json',
+                    success: function(data) {
+                        globalResponse=""
+                        console.log(data);
+                        $("#nearby-location").html("got the results")
+                        var marker
+                        var content = ""
+                        responseJson = JSON.parse(JSON.stringify(data))
+                        if(responseJson.error){
+                            document.getElementById("results").className = "alert alert-danger "
+                            document.getElementById("results").innerText = "You can't travel to this country"
+                        }
+                        else{
+                            document.getElementById("results").className = "alert alert-success"
+                            document.getElementById("results").innerText="You can travel to this county"
+                            populateMap(responseJson)
+                            globalResponse=responseJson
+                        
+                        }
+                    },
+                    complete: function(){
+                        $("#loader").addClass("hidden")
+                        if(globalResponse.diseaseRiskLevel.match("Extreme") || globalResponse.diseaseRiskLevel.match("High")){
+                                document.getElementById("diseaseRiskLevel").className = "alert alert-danger"
+                                document.getElementById("diseaseRiskLevel").innerHTML = responseJson.diseaseRiskLevel
+                         }
+                         document.getElementById("hotspots").className = "alert alert-danger"
+                         document.getElementById("hotspots").innerHTML = responseJson.hotspots
+                         document.getElementById("cases").className = "alert alert-danger"
+                         document.getElementById("cases").innerHTML = responseJson.caseConfirmed
+                        
+                    }
+                });
+            }
+            function populateMap(responseJson){
+                var marker = new google.maps.Marker({
+                    position: new google.maps.LatLng(responseJson.latitude, responseJson.longitude),
+                    map: map
+                });
+                map.setCenter(marker.getPosition())
+                var infowindow = new google.maps.InfoWindow()
+                console.log(responseJson.diseaseRiskLevel)
+                var content = responseJson.summary + responseJson.testing + responseJson.diseaseRiskLevel + responseJson.hotspots + responseJson.caseConfirmed
+                google.maps.event.addListener(marker,'click', (function(marker,content,infowindow){ 
+                    return function() {
+                        infowindow.setContent(content);
+                        infowindow.open(map,marker);
+                    };
+                })(marker,content,infowindow));
+            }
+  
+    
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAJ--ce1fXomzvNJCQOaXJEGw-hz3Zrx34&callback=initMap&v=weekly" async></script>
+
+</body>
+</html>

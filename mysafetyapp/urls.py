@@ -23,8 +23,12 @@ from django.conf.urls.static import static
 
 def home(request):
     return render(request, 'home.html')
+
+def checkTravelRestrictions(request):
+    return render(request, 'travelrestrictions.html')
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('check-travel-restriction/', checkTravelRestrictions, name = "check-travel-restriction"),
     path('home/', home, name="home"),
     path('', include('AmadeusSafetyService.urls'))
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
